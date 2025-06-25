@@ -26,12 +26,11 @@ class BinomialTreePricer(ABC):
     def get_trees(self):
         pass
 
-    def plot_binomial_tree(self, annotate_values=True, save_figure=False):
+    def plot_binomial_tree(self, annotate_values=True, save_figure=False, file_name=""):
         if self.N > 10:
             print("Cannot plot tree with greater than 10 time steps.")
             return
             
-
         N = self.N
         stock_tree, option_tree = self.trees
         plt.figure(figsize=(1.2*N, 1.2*N))
@@ -77,7 +76,9 @@ class BinomialTreePricer(ABC):
                 os.mkdir('figures')
             except FileExistsError:
                 pass
-            file_path = os.path.join(base_dir, "figures", f"BinomialTree_{datetime.datetime.now().strftime('%d%m%y%H%M%S')}.pdf")
+            if not file_name:
+                file_name = f"BinomialTree_{datetime.datetime.now().strftime('%d%m%y%H%M%S')}.pdf"
+            file_path = os.path.join(base_dir, "figures", file_name)
             plt.savefig(file_path)
 
         plt.show()
@@ -184,4 +185,4 @@ if __name__ == "__main__":
 
     option = AmericanOption(K, T, type)
     pricer = AmericanBinomialTreePricer(option, S, sigma, r, N)
-    pricer.plot_binomial_tree(save_figure=True)
+    pricer.plot_binomial_tree()
