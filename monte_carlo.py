@@ -1,3 +1,4 @@
+import datetime
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,17 +25,25 @@ class MonteCarloSimualtion:
                                 self.paths[:,i-1]*self.volatility*random[:,i]*np.sqrt(dt))
         return self.paths
     
-    def plot_paths(self, file_name=''):
+    def plot_paths(self, save_figure=False, file_name=""):
         fig, ax = plt.subplots()
-        ax.plot(self.paths.T)
+        ax.plot(np.arange(0, self.T + self.T/self.n, self.T/self.n), self.paths.T)
 
-        if file_name:
+        title1 = f"Monte Carlo Simulation"
+        title2 = f"Parameters: N={self.N}, S={self.S}, $\\mu=${self.drift_rate}, $\\sigma=${self.volatility}, T={self.T}, $\\Delta t=${self.T/self.n:.5f}"
+        ax.set_title(title1 + "\n" + title2)
+        ax.set_xlabel("Time (Yrs)")
+        ax.set_ylabel("Asset Price ($)")
+
+        if save_figure:
             base_dir = os.path.dirname(__file__)
             try:
-                os.mkdir('figures')
+                os.mkdir("figures")
             except FileExistsError:
                 pass
-            file_path = os.path.join(base_dir, 'figures', file_name)
+            if not file_name:
+                file_name = f"MonteCarloSim_{datetime.datetime.now().strftime('%d%m%y%H%M%S')}.pdf"
+            file_path = os.path.join(base_dir, "figures", file_name)
             fig.savefig(file_path)
             
         plt.show()
@@ -59,7 +68,7 @@ class FastMonteCarloSimualtion(MonteCarloSimualtion):
 
 
 if __name__ == "__main__":
-    y = FastMonteCarloSimualtion(N=10000, S=100, drift_rate=0.1, volatility=0.2, T=1, n=300)
-    y.plot_paths()
+    y = FastMonteCarloSimualtion(N=1000, S=100, drift_rate=0.1, volatility=0.2, T=1, n=300)
+    y.plot_paths(save_figure=True)
     print(y.average)
 
