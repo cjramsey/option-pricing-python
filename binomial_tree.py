@@ -19,11 +19,11 @@ class BinomialTreePricer(ABC):
         self.price = self.get_price()
 
     @abstractmethod
-    def get_price(self):
+    def get_trees(self):
         pass
 
     @abstractmethod
-    def get_trees(self):
+    def get_price(self):
         pass
 
     def plot_binomial_tree(self, annotate_values=True, save_figure=False, file_name=""):
@@ -86,31 +86,9 @@ class BinomialTreePricer(ABC):
 
 class EuropeanBinomialTreePricer(BinomialTreePricer):
 
-    def get_price(self):
-        T = self.option.T
-        K = self.option.K
-        dt = T/self.N
-        u = np.exp(self.sigma*np.sqrt(dt))
-        d = 1/u
-        p = (np.exp(self.r * dt) - d)/(u - d)
-
-        price = 0
-        for k in range(1, self.N+2):
-            ST = self.S * u**k * d**(self.N-k)
-            p_ = math.comb(self.N, k) * p**k * (1-p)**(self.N-k)
-            if self.option.type == "call":
-                price += max(ST - K, 0) * p_
-            elif self.option.type == "put":
-                price += max(K - ST, 0) * p_
-
-        price = np.exp(-self.r*T) * price
-
-        return price
-
     def get_trees(self):
-        T = self.option.T
         K = self.option.K
-        dt = T/self.N
+        dt = self.option.T/self.N
         u = np.exp(self.sigma*np.sqrt(dt))
         d = 1/u
         p = (np.exp(self.r * dt) - d)/(u - d)
@@ -131,53 +109,88 @@ class EuropeanBinomialTreePricer(BinomialTreePricer):
                 options_tree[j, i] = np.exp(-self.r*dt)*p*options_tree[j, i+1] + (1-p)*options_tree[j+1, i+1]
 
         return np.array([stock_tree, options_tree])
-        
-class AmericanBinomialTreePricer(BinomialTreePricer):
     
     def get_price(self):
         return self.trees[1,0,0]
 
+
+class AmericanBinomialTreePricer(BinomialTreePricer):
+
     def get_trees(self):
-        T = self.option.T
         K = self.option.K
-        S = self.S
-        N = self.N
-        r = self.r
-        dt = T/N
+        dt = self.option.T/self.N
         u = np.exp(self.sigma*np.sqrt(dt))
         d = 1/u
         p = (np.exp(self.r * dt) - d)/(u - d)
-
-        stock_tree = np.full((N+1,N+1), np.nan)
-        for i in range(N+1):
+        
+        stock_tree = np.full((self.N+1,self.N+1), np.nan)
+        for i in range(self.N+1):
             for j in range(i+1):
-                stock_tree[j,i] = S * u**(i-j) * d**j
+                stock_tree[j,i] = self.S * u**(i-j) * d**j
 
         options_tree = np.full_like(stock_tree, np.nan)
         if self.option.type == "call":
             options_tree[:,-1] = np.maximum(stock_tree[:,-1] - K, 0)
-            for i in range(N-1, -1, -1):
+            for i in range(self.N-1, -1, -1):
                 for j in range(i+1):
                     exercise_val = stock_tree[j,i] - K
-                    hold_val = np.exp(-r*dt)*(p*options_tree[j, i+1] + (1-p)*options_tree[j+1, i+1])
+                    hold_val = np.exp(-self.r*dt)*(p*options_tree[j, i+1] + (1-p)*options_tree[j+1, i+1])
                     options_tree[j,i] = max(exercise_val, hold_val)
 
         elif self.option.type == "put":
             options_tree[:,-1] = np.maximum(K - stock_tree[:,-1], 0)
-            for i in range(N-1, -1, -1):
+            for i in range(self.N-1, -1, -1):
                 for j in range(i+1):
                     exercise_val = K -stock_tree[j,i] 
-                    hold_val = np.exp(-r*dt)*(p*options_tree[j, i+1] + (1-p)*options_tree[j+1, i+1])
+                    hold_val = np.exp(-self.r*dt)*(p*options_tree[j, i+1] + (1-p)*options_tree[j+1, i+1])
                     options_tree[j,i] = max(exercise_val, hold_val)
 
         return np.array([stock_tree, options_tree])
     
+    def get_price(self):
+        return self.trees[1,0,0]
+    
+    @property
+    def greeks(self):
+        dt = self.option.T/self.N
+        u = np.exp(self.sigma*np.sqrt(dt))
+        d = 1/u
+        f = self.trees[1]
+
+        delta = (f[0,1] - f[1,1])/(self.S*u - self.S*d)
+        
+        h = 0.5*(self.S*u**2 - self.S*d**2)
+        gamma = ((f[2,2] - f[1,2])/(self.S*u**2 - self.S) - (f[1,2] - f[0,2])/(self.S - self.S*d**2))/h
+        
+        theta = (f[1,2] - f[0,0])/(2*dt)
+        
+        # valuing new option with same parameters except small change in sigma
+        delta_sigma = 0.01
+        f_prime = AmericanBinomialTreePricer(self.option, self.S, self.sigma + delta_sigma, self.r, self.N).get_trees()[1]
+        vega = (f_prime[0,0] - f[0,0])/delta_sigma
+    
+        # valuing new option with same parameters except small change in r
+        delta_r = 0.01
+        f_prime = AmericanBinomialTreePricer(self.option, self.S, self.sigma, self.r + delta_r, self.N).get_trees()[1]
+        rho = (f_prime[0,0] - f[0,0])/delta_r
+        
+        greeks_dict = {
+            "delta": delta,
+            "theta": theta,
+            "rho": rho,
+            "gamma": gamma,
+            "vega": vega
+        }
+
+        return greeks_dict
+
+
 
 if __name__ == "__main__":
 
     K = 95
     T = 1
-    type = "call"
+    type = "put"
     S = 100
     sigma = 0.1
     r = 0.05
