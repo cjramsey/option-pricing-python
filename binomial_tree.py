@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from abc import ABC, abstractmethod
 from options import Option, EuropeanOption, AmericanOption
+from black_scholes import EuropeanBlackScholesPricer
 
 class BinomialTreePricer(ABC):
 
@@ -183,19 +184,28 @@ class AmericanBinomialTreePricer(BinomialTreePricer):
         }
 
         return greeks_dict
+    
+    @property
+    def control_variate_technique(self):
+        f_A = self.price
+        euro_option = EuropeanOption(self.option.K, self.option.T, self.option.type)
+        f_E = EuropeanBinomialTreePricer(euro_option, self.S, self.sigma, self.r, self.N).price
+        f_BSM = EuropeanBlackScholesPricer(euro_option, self.S, self.sigma, self.r).price
 
+        return f_A + (f_BSM - f_E)
 
 
 if __name__ == "__main__":
 
-    K = 95
+    K = 105
     T = 1
     type = "put"
     S = 100
     sigma = 0.1
     r = 0.05
-    N = 10
+    N = 100
 
     option = AmericanOption(K, T, type)
     pricer = AmericanBinomialTreePricer(option, S, sigma, r, N)
-    pricer.plot_binomial_tree()
+    print(pricer.price)
+    print(pricer.control_variate_technique)
