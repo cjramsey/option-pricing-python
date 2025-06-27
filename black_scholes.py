@@ -3,7 +3,8 @@ from scipy.stats import norm
 from abc import ABC, abstractmethod
 
 import greeks
-from options import EuropeanOption, PerpetualAmericanOption, GapOption
+from options import (EuropeanOption, PerpetualAmericanOption, 
+                    GapOption, ForwardStartOption, CliquetOption)
 
 # closed-form solutions for European options
 
@@ -69,7 +70,9 @@ class EuropeanBlackScholesPricer(BlackScholesPricer):
 
         return greeks_dict
     
-class PerpetualAmericanBlackSholesPricer(BlackScholesPricer):
+# Closed-form solutions for exotics
+
+class PerpetualAmericanPricer(BlackScholesPricer):
 
     def get_price(self):
         K = self.option.K
@@ -97,7 +100,7 @@ class PerpetualAmericanBlackSholesPricer(BlackScholesPricer):
                 p = K - S
             return p
     
-class GapBlackScolesPricer(BlackScholesPricer):
+class GapOptionPricer(BlackScholesPricer):
 
     def get_price(self):
         K1 = self.option.K1
@@ -119,17 +122,46 @@ class GapBlackScolesPricer(BlackScholesPricer):
             p = K1*np.exp(-r*T)*norm.cdf(-d2) - S*np.exp(-q*T)*norm.cdf(-d1)
             return p
 
-if __name__ == "__main__":
-    
-    K1 = 400000
-    K2 = 350000
-    T = 1
-    type = "put"
-    S = 500000
-    sigma = 0.2
-    r = 0.05
-    q = 0
+class ForwardStartPricer(BlackScholesPricer):
 
-    option = GapOption(K1, K2, 1, type)
-    pricer = GapBlackScolesPricer(option, S, sigma, r, q)
-    print(pricer.price)
+    def get_price(self):
+        T = self.option.T2 - self.option.T1
+        K = self.option.K
+        euro_option = EuropeanOption(K, T, self.option.type)
+        pricer = EuropeanBlackScholesPricer(euro_option, K, self.sigma, self.r, self.q)
+        c = pricer.price
+        value = c*np.exp(-self.q*self.option.T1)
+        return value
+
+class SimpleCliquetPricer(BlackScholesPricer):
+    '''
+    We assume the term structure is simple with fixed reset times,
+    specified type of option between each period, and the strike 
+    price of next option resets to the current spot price at the 
+    expiry of the previous option.
+
+    Moreover, we make the assumption that in a risk-neutral world, 
+    the spot price at time T is equal to spot price at time 0, continuously 
+    compounded at the risk-free rate, r, discounted by the yield q.
+    '''
+
+    def get_price(self):
+        S = self.S
+        r = self.r
+        q = self.q
+        sigma = self.sigma
+        K = self.option.K
+
+        T1 = 0
+        c = 0
+        for T2, type in zip(self.option.T, self.option.types):
+            option = ForwardStartOption(K, T1, T2, type)
+            pricer = ForwardStartPricer(option, S*np.exp((r-q)*T1), sigma, r, q) 
+            c += pricer.price
+            T1 = T2
+            K = S*np.exp((r-q)*T1)
+        return c
+
+
+if __name__ == "__main__":
+    pass
