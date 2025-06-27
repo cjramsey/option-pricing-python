@@ -36,7 +36,6 @@ class PerpetualAmericanOption(AmericanOption):
     def __init__(self, K, type):
         super().__init__(K, np.inf, type)
 
-
 class GapOption(EuropeanOption):
 
     def __init__(self, K1, K2, T, type):
@@ -50,6 +49,32 @@ class GapOption(EuropeanOption):
              return S - self.K1 if S > self.K2 else 0
         elif self.type == "put":
             return self.K1 - S if S < self.K2 else 0
+        
+class ForwardStartOption(EuropeanOption):
+
+    def __init__(self, K, T1, T2, type):
+        self.K = K
+        self.T1 = T1
+        self.T2 = T2
+        self.type = type
+
+class CliquetOption(Option):
+
+    def __init__(self, K, T, types):
+        self.K = K
+        self.T = T
+        self.types = types
+
+    def payoff(self, S):
+        c = 0
+        K = self.K
+        for i, spot in enumerate(S):
+            if self.types[i] == "call":
+                c += max(spot - K, 0)
+            elif self.types[i] == "put":
+                c += max(K - spot, 0)
+            K = spot
+        return c
 
 
 if __name__ == "__main__":
