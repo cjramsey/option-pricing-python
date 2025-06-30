@@ -15,8 +15,11 @@ class MarketData:
         self.calls = {}
         self.puts = {}
 
-        self.get_stock_data()
-        self.get_options_data()
+        if self.tickers:
+            self.get_stock_data()
+            self.get_options_data()
+        else:
+            self.load_data()
 
         if save_stock_data or save_option_data:
             self.save_data()
@@ -24,7 +27,9 @@ class MarketData:
     def get_stock_data(self):
         for ticker in self.tickers:
             tk = yf.Ticker(ticker)
-            self.stocks.update({f"{ticker}" : tk.history(period="max")})
+            df = tk.history(period="max")
+            df.index = pd.to_datetime(df.index, utc=True)
+            self.stocks.update({f"{ticker}" : df})
 
     def get_options_data(self):
         for ticker in self.tickers:
@@ -42,7 +47,10 @@ class MarketData:
                             "contractSize", "currency"]
             calls.drop(drop_columns, axis=1, inplace=True)
             puts.drop(drop_columns, axis=1, inplace=True)
-            
+
+            calls["lastTradeDate"] = pd.to_datetime(calls["lastTradeDate"], utc=True)
+            puts["lastTradeDate"] = pd.to_datetime(puts["lastTradeDate"], utc=True)
+
             self.calls.update({ticker: calls})
             self.puts.update({ticker: puts})
 
@@ -134,11 +142,7 @@ def get_risk_free_rates(start=None, durations=None):
 def main():
     tickers = ["AAPL", "MSFT", "SPY", "NVDA", "PLTR",
                "AMZN", "GOOG", "TSLA", "TSM", "TQQQ"]
-    #data = MarketData([])
-    #data.load_data()
-    #print(isinstance(data.calls["AMZN"], pd.DataFrame))
-    x = get_risk_free_rates()
-    print(x)
+    data = MarketData([])
 
 if __name__ == "__main__":
     main()
