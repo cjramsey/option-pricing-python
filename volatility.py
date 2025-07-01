@@ -1,8 +1,9 @@
-from datetime import datetime, timedelta
+from abc import ABC, abstractmethod
+from datetime import date, datetime, timedelta
 import os
 import numpy as np
 import pandas as pd
-from scipy.optimize import minimize, brentq
+from scipy.optimize import NonlinearConstraint, minimize, brentq
 from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 from matplotlib import cm
@@ -12,7 +13,18 @@ from options import EuropeanOption, AmericanOption
 from black_scholes import EuropeanBlackScholesPricer
 from binomial_tree import AmericanBinomialTreePricer
 
-class ImpliedVolatilitySurface:
+
+class VolatilityModel(ABC):
+
+    def __init__(self, data, ticker):
+        self.data = data
+        self.ticker = ticker
+
+    @abstractmethod
+    def model_volatility(self):
+        pass
+
+class ImpliedVolatilityModel:
 
     def __init__(self, data, ticker, type, style):
         self.data = data
@@ -146,12 +158,103 @@ class ImpliedVolatilitySurface:
             file_path = os.path.join(data_dir, file_name)
             plt.savefig(file_path)
 
+class VolatilityModel:
+
+    def __init__(self, data: MarketData, ticker, start=None, end=None):
+        self.data = data
+        self.ticker = ticker
+        self.start = date(start) if start else date(2024,1,1)
+        self.end = date(end) if start else date.today()
+
+        self.select_data()
+
+    def select_data(self):
+        df = self.data.stocks[self.ticker]
+
+        columns = ["Volume", "Dividends", "Stock Splits"]
+        df.drop(columns=columns, inplace=True)
+
+        df.index = pd.to_datetime(df.index, utc=True).date
+        filter = (df.index > self.start) & (df.index < self.end)
+        df.loc[filter]
+
+        self.data = df 
+
+    def simple_vol(self):
+        df = self.data
+        log_return = np.log(df["Close"]/df["Close"].shift(-1))
+        volatility = log_return.rolling(window=252, center=False).std().dropna()
+        return volatility
+    
+    def EWMA_vol(self, lambda_=0.94):
+        df = self.data
+        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(-1)).dropna()
+        df["EWMA"] = (df["LogReturn"].rolling(window=252, center=False).std()).shift(1)
+        df.dropna(axis=0, inplace=True)
+        for i in range(2, len(df)):
+            df.iloc[i, df.columns.get_loc("EWMA")] = np.sqrt((lambda_ * ((df.iloc[i-1, df.columns.get_loc("EWMA")])**2) 
+                                    + (1 - lambda_) * (df.iloc[i-1, df.columns.get_loc("LogReturn")])**2))
+        return df["EWMA"]
+    
+    def estimate_EWMA_param(self):
+        df = self.data
+        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(-1))
+        df["EWMA"] = (df["LogReturn"].rolling(window=252, center=False).std()).shift(1)
+        df.dropna(axis=0, inplace=True)
+         
+        def likelihood(lambda_, df):
+            for i in range(2, len(df)):
+                df.iloc[i, df.columns.get_loc("EWMA")] = np.sqrt((lambda_ * ((df.iloc[i-1, df.columns.get_loc("EWMA")])**2) 
+                                        + (1 - lambda_) * (df.iloc[i-1, df.columns.get_loc("LogReturn")])**2))
+            likelihood = -(-np.log(df["EWMA"]**2) - (df["LogReturn"]**2)/df["EWMA"]**2).sum()
+            return likelihood 
+        
+        bounds = [(.8, .999)]
+        lambda_ = minimize(likelihood, [0.95], args=(df), bounds=bounds).x[0]
+        return lambda_
+    
+    def GARCH11_vol(self, omega, alpha, beta):
+        df = self.data
+        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(-1))
+        df["stdev"] = df["LogReturn"].rolling(window=252, center=False).std().shift(1)
+        df["vol"] = np.nan
+        for i in range(2, len(df)):
+                df.iloc[i, df.columns.get_loc("vol")] = np.sqrt(omega 
+                                                         + alpha*(df.iloc[i-1, df.columns.get_loc("LogReturn")]**2) 
+                                                         + beta*(df.iloc[i-1, df.columns.get_loc("stdev")]**2))
+        return df["vol"]
+
+    def estimate_GARCH11_params(self):
+        df = self.data
+        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(-1))
+        df["stdev"] = df["LogReturn"].rolling(window=252, center=False).std().shift(1)
+        df["vol"] = np.nan
+
+        def likelihood(params, df):
+            omega, alpha, beta = params
+            for i in range(2, len(df)):
+                df.iloc[i, df.columns.get_loc("vol")] = np.sqrt(omega/100000 
+                                                         + (alpha/10)*(df.iloc[i-1, df.columns.get_loc("LogReturn")]**2) 
+                                                         + beta*(df.iloc[i-1, df.columns.get_loc("stdev")]**2))
+            likelihood = -(-np.log(df["vol"]) - (df["LogReturn"]**2)/df["vol"]**2).sum()
+            return likelihood 
+        
+        constraint = NonlinearConstraint(lambda x: x[0]/100000 + x[1]/10 + x[2], 0.95, 1.05)
+        
+        bounds = [(0, 1), (0, 1), (0, 1)]
+        omega, alpha, beta = minimize(likelihood, [1, 1, 0.9], args=(df), bounds=bounds, constraints=constraint).x
+        return omega/100000, alpha/10, beta
+
 
 def main():
-    data = MarketData([])
-    x = ImpliedVolatilitySurface(data, "GOOG", "call", "American")
-    print(x.option_data)
-    x.plot_IV_surface(save_figure=True)
+    data = MarketData(["NVDA"])
+    x = VolatilityModel(data, "NVDA")
+    fig, ax = plt.subplots()
+    ax.plot(x.EWMA_vol(x.estimate_EWMA_param()), label="EWMA")
+    ax.plot(x.GARCH11_vol(*x.estimate_GARCH11_params()), label="GARCH(1,1)")
+    ax.plot(x.simple_vol(), label="Unweighted")
+    plt.legend()
+    plt.show()
 
 if __name__ == "__main__":
     main()
