@@ -140,9 +140,7 @@ def get_risk_free_rates(start=None, durations=None):
 
                    
 def main():
-    tickers = ["AAPL", "MSFT", "SPY", "NVDA", "PLTR",
-               "AMZN", "GOOG", "TSLA", "TSM", "TQQQ"]
-    data = MarketData([])
+    pass
 
 if __name__ == "__main__":
     main()

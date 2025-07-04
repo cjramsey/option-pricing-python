@@ -10,11 +10,12 @@ from black_scholes import EuropeanBlackScholesPricer
 
 class BinomialTreePricer(ABC):
 
-    def __init__(self, option, S, sigma, r, N):
+    def __init__(self, option, S, sigma, r, q=0, N=10):
         self.option = option
         self.S = S
         self.sigma = sigma
         self.r = r
+        self.q = q
         self.N = N
         self.trees = self.get_trees()
         self.price = self.get_price()
@@ -195,17 +196,8 @@ class AmericanBinomialTreePricer(BinomialTreePricer):
         return f_A + (f_BSM - f_E)
 
 
+def main():
+    pass
+
 if __name__ == "__main__":
-
-    K = 105
-    T = 1
-    type = "put"
-    S = 100
-    sigma = 0.1
-    r = 0.05
-    N = 100
-
-    option = AmericanOption(K, T, type)
-    pricer = AmericanBinomialTreePricer(option, S, sigma, r, N)
-    print(pricer.price)
-    print(pricer.control_variate_technique)
+    main()

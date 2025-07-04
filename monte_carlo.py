@@ -3,6 +3,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 class MonteCarloSimualtion:
     
     def __init__(self, N, S, drift_rate, volatility, T, n):
@@ -13,7 +14,7 @@ class MonteCarloSimualtion:
         self.T = T
         self.n = n
         self.paths = self.generate_paths()
-        self._average = self.get_average()
+        self.average = self.get_average()
 
     def generate_paths(self):
         dt = self.T/self.n
@@ -64,11 +65,48 @@ class FastMonteCarloSimualtion(MonteCarloSimualtion):
         dW = np.cumsum(dz*np.sqrt(dt), axis=1)
         t = np.linspace(0, self.T, self.n+1)
         self.paths = self.S*np.exp((self.drift_rate - (self.volatility**2)/2)*t +self.volatility*dW)
-        return self.paths 
+        return self.paths
+    
+class TerminalMonteCarloPricer:
+    
+    def __init__(self, option, S, drift_rate, volatility, N=10000, n=250):
+        self.option = option
+        self.S = S
+        self.drift_rate = drift_rate
+        self.volatility = volatility
+        self.N = N
+        self.n = n
+        self.price = self.get_price()
 
+    def get_price(self):
+        sims = FastMonteCarloSimualtion(self.N, self.S, self.drift_rate, self.volatility, self.option.T, self.n)
+        final_values = sims.paths[:,-1]
+        f = np.vectorize(lambda x: self.option.payoff(x))
+        avg_payoff = f(final_values).mean()
+        return avg_payoff
+    
+class AverageMonteCarloPricer:
+
+    def __init__(self, option, S, drift_rate, volatility, N=10000, n=250):
+        self.option = option
+        self.S = S
+        self.drift_rate = drift_rate
+        self.volatility = volatility
+        self.N = N
+        self.n = n
+        self.price = self.get_price()
+
+    def get_price(self):
+        sims = FastMonteCarloSimualtion(self.N, self.S, self.drift_rate, self.volatility, self.option.T, self.n)
+        averages = np.mean(sims.paths, axis=0)
+        f = np.vectorize(lambda x: self.option.payoff(x))
+        avg_payoff = f(averages).mean()
+        return avg_payoff
+
+
+def main():
+    pass
 
 if __name__ == "__main__":
-    y = FastMonteCarloSimualtion(N=1000, S=100, drift_rate=0.1, volatility=0.2, T=1, n=300)
-    y.plot_paths(save_figure=True)
-    print(y.average)
+    main()
 

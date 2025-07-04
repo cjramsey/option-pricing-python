@@ -4,7 +4,8 @@ from abc import ABC, abstractmethod
 
 import greeks
 from options import (EuropeanOption, PerpetualAmericanOption, 
-                    GapOption, ForwardStartOption, CliquetOption)
+                    GapOption, ForwardStartOption, CliquetOption,
+                    ChooserOption, BarrierOption)
 
 # closed-form solutions for European options
 
@@ -161,7 +162,10 @@ class SimpleCliquetPricer(BlackScholesPricer):
             T1 = T2
             K = S*np.exp((r-q)*T1)
         return c
+    
 
+def main():
+    pass
 
 if __name__ == "__main__":
-    pass
+    main()
