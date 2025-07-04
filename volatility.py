@@ -26,11 +26,10 @@ class VolatilityModel(ABC):
 
 class ImpliedVolatilityModel:
 
-    def __init__(self, data, ticker, type, style):
+    def __init__(self, data, ticker, type):
         self.data = data
         self.ticker = ticker
         self.type = type
-        self.style = style
         self.stock_data = data.stocks[ticker]
         self.option_data = self.get_option_data()
         self.date = self.get_date()
@@ -76,10 +75,10 @@ class ImpliedVolatilityModel:
         df["T"] = (pd.to_datetime(df["expirationDate"]) - date).dt.days
         df["T"] = df["T"]/365
 
-        time_filter = (df["T"] > 7/365) & (df["T"] < 2)
+        time_filter = (df["T"] > 5/365) & (df["T"] < 2)
         df = df.loc[time_filter]
 
-        moneyness_filter = np.abs((self.stock_price - df["strike"])/self.stock_price) < 0.2
+        moneyness_filter = np.abs((self.stock_price - df["strike"])/self.stock_price) < 0.3
         df = df.loc[moneyness_filter]
 
         stale_filter = (df['volume'] > 0) & (df['openInterest'] > 0)
@@ -120,7 +119,7 @@ class ImpliedVolatilityModel:
             model_price = pricer.price
             market_price = (row["ask"] + row["bid"])/2
             return (market_price - model_price)
-        return brentq(cost_func, 1e-6, 5, args=(price, type), maxiter=500)
+        return brentq(cost_func, 1e-3, 5, args=(price, type), maxiter=500)
     
     def get_IV(self):
         self.option_data["estimatedIV"] = self.option_data.aggregate(
@@ -133,8 +132,8 @@ class ImpliedVolatilityModel:
         y = df["T"]
         z = df["estimatedIV"]
 
-        xi = np.linspace(x.min(), x.max(), 100)
-        yi = np.linspace(y.min(), y.max(), 100)
+        xi = np.linspace(x.min(), x.max(), 25)
+        yi = np.linspace(y.min(), y.max(), 25)
         xi, yi = np.meshgrid(xi, yi)
         zi = griddata((x, y), z, (xi, yi), method="cubic")
 
@@ -182,24 +181,27 @@ class VolatilityModel:
 
     def simple_vol(self):
         df = self.data
-        log_return = np.log(df["Close"]/df["Close"].shift(-1))
+        log_return = np.log(df["Close"]/df["Close"].shift(1))
         volatility = log_return.rolling(window=252, center=False).std().dropna()
         return volatility
     
     def EWMA_vol(self, lambda_=0.94):
-        df = self.data
-        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(-1)).dropna()
-        df["EWMA"] = (df["LogReturn"].rolling(window=252, center=False).std()).shift(1)
+        df = self.data.copy()
+        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(1))
+        df = df.iloc[1:].copy()
+        df.loc[:, "EWMA"] = (df["LogReturn"].rolling(window=252, center=False).std()).shift(-1)
         df.dropna(axis=0, inplace=True)
+
         for i in range(2, len(df)):
             df.iloc[i, df.columns.get_loc("EWMA")] = np.sqrt((lambda_ * ((df.iloc[i-1, df.columns.get_loc("EWMA")])**2) 
                                     + (1 - lambda_) * (df.iloc[i-1, df.columns.get_loc("LogReturn")])**2))
         return df["EWMA"]
     
     def estimate_EWMA_param(self):
-        df = self.data
-        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(-1))
-        df["EWMA"] = (df["LogReturn"].rolling(window=252, center=False).std()).shift(1)
+        df = self.data.copy()
+        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(1))
+        df = df.iloc[1:].copy()
+        df.loc[:, "EWMA"] = (df["LogReturn"].rolling(window=252, center=False).std()).shift(-1)
         df.dropna(axis=0, inplace=True)
          
         def likelihood(lambda_, df):
@@ -215,19 +217,19 @@ class VolatilityModel:
     
     def GARCH11_vol(self, omega, alpha, beta):
         df = self.data
-        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(-1))
-        df["stdev"] = df["LogReturn"].rolling(window=252, center=False).std().shift(1)
+        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(1))
+        df["stdev"] = df["LogReturn"].rolling(window=252, center=False).std()
         df["vol"] = np.nan
         for i in range(2, len(df)):
                 df.iloc[i, df.columns.get_loc("vol")] = np.sqrt(omega 
                                                          + alpha*(df.iloc[i-1, df.columns.get_loc("LogReturn")]**2) 
                                                          + beta*(df.iloc[i-1, df.columns.get_loc("stdev")]**2))
-        return df["vol"]
+        return df[["LogReturn", "vol"]]
 
     def estimate_GARCH11_params(self):
-        df = self.data
-        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(-1))
-        df["stdev"] = df["LogReturn"].rolling(window=252, center=False).std().shift(1)
+        df = self.data.copy()
+        df["LogReturn"] = np.log(df["Close"]/df["Close"].shift(1))
+        df["stdev"] = df["LogReturn"].rolling(window=252, center=False).std()
         df["vol"] = np.nan
 
         def likelihood(params, df):
@@ -239,7 +241,7 @@ class VolatilityModel:
             likelihood = -(-np.log(df["vol"]) - (df["LogReturn"]**2)/df["vol"]**2).sum()
             return likelihood 
         
-        constraint = NonlinearConstraint(lambda x: x[0]/100000 + x[1]/10 + x[2], 0.95, 1.05)
+        constraint = NonlinearConstraint(lambda x:  x[1]/10 + x[2], lb=0, ub=1)
         
         bounds = [(0, 1), (0, 1), (0, 1)]
         omega, alpha, beta = minimize(likelihood, [1, 1, 0.9], args=(df), bounds=bounds, constraints=constraint).x
@@ -247,14 +249,7 @@ class VolatilityModel:
 
 
 def main():
-    data = MarketData(["NVDA"])
-    x = VolatilityModel(data, "NVDA")
-    fig, ax = plt.subplots()
-    ax.plot(x.EWMA_vol(x.estimate_EWMA_param()), label="EWMA")
-    ax.plot(x.GARCH11_vol(*x.estimate_GARCH11_params()), label="GARCH(1,1)")
-    ax.plot(x.simple_vol(), label="Unweighted")
-    plt.legend()
-    plt.show()
+    pass
 
 if __name__ == "__main__":
     main()
