@@ -2,7 +2,6 @@ import datetime
 import os
 import pandas as pd
 import pandas_datareader as pdr
-import numpy as np
 import yfinance as yf
 
 class MarketData:

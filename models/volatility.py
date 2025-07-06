@@ -8,10 +8,10 @@ from scipy.interpolate import griddata
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
-from market_data import MarketData, get_risk_free_rates
-from options import EuropeanOption, AmericanOption
-from black_scholes import EuropeanBlackScholesPricer
-from binomial_tree import AmericanBinomialTreePricer
+from market.market_data import MarketData, get_risk_free_rates
+from derivatives.vanilla import EuropeanOption, AmericanOption
+from models.black_scholes import EuropeanBlackScholesPricer
+from models.binomial_tree import AmericanBinomialTreePricer
 
 
 class VolatilityModel(ABC):

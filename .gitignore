@@ -1,9 +1,10 @@
 \__pycache__
 \data
 \figures
-
-TODO.txt
-
+.VSCodeCounter/
 *.ipynb
 
 *.csv
+*.egg-info/
+*egg-link
+TODO.txt
