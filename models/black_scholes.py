@@ -151,7 +151,7 @@ class PerpetualAmericanPricer(BlackScholesPricer):
         q = self.q
 
         w = r - q - (sigma**2)/2
-        if self.option.type == "call":
+        if self.option.option_type == "call":
             alpha = (-w + np.sqrt(w**2 +2*sigma**2*r))/sigma**2
             H = K*alpha/(alpha - 1)
             if S < H:
@@ -160,7 +160,7 @@ class PerpetualAmericanPricer(BlackScholesPricer):
                 c = S - K
             return c
         
-        elif self.option.type == "put":
+        elif self.option.option_type == "put":
             alpha = (w + np.sqrt(w**2 + 2*sigma**2*r))/sigma**2
             H = K*alpha/(alpha + 1)
             if S > H:
@@ -227,7 +227,7 @@ class BasicCliquetPricer(BlackScholesPricer):
 
     def __init__(self, option, spot, sigma, r, q=0):
         if not isinstance(option, exotics.BasicCliquetOption):
-            raise TypeError(f"Parameter option must be BasicCliquetOption instance, got {type(option)}.")
+            raise TypeError(f"Parameter option must be a BasicCliquetOption instance, got {type(option)}.")
         super().__init__(option, spot, sigma, r, q)
 
     @property
@@ -248,6 +248,126 @@ class BasicCliquetPricer(BlackScholesPricer):
             K = S*np.exp((r-q)*T1)
         return c
     
+class ChooserOptionPricer(BlackScholesPricer):
+
+    def __init__(self, option, spot, sigma, r, q=0):
+        if not isinstance(option, exotics.ChooserOption):
+            raise TypeError(f"Parameter option must be a ChooserOption instance, got {type(option)}.")
+        super().__init__(option, spot, sigma, r, q)
+
+    @property
+    def price(self):
+        K = self.option.strike
+        T1, T2 = self.option.T1, self.option.T2
+        S = self.spot
+        sigma = self.sigma
+        r = self.r
+        q = self.q
+
+        call = EuropeanOption(K, T2, "call")
+        put = EuropeanOption(K*np.exp(-(r-q)*(T2-T1)), T1, "put")
+        c = EuropeanBlackScholesPricer(call, S, sigma, r, q).price
+        p = EuropeanBlackScholesPricer(put, S, sigma, r, q).price
+        return c + np.exp(-q*(T2-T1))*p
+    
+class BarrierOptionsPricer(BlackScholesPricer):
+
+    def __init__(self, option, spot, sigma, r, q=0):
+        if not isinstance(option, exotics.BarrierOption):
+            raise TypeError(f"Parameter option must be a BarrierOption instance, got {type(option)}.")
+        super().__init__(option, spot, sigma, r, q)
+
+    @property
+    def price(self):
+        K = self.option.strike
+        T = self.option.expiry
+        H = self.option.barrier
+        S = self.spot
+        r = self.r
+        q = self.q
+        sigma = self.sigma
+
+        if self.option.option_type == "down_and_out_call" and H >= S:
+            return 0
+        if self.option.option_type == "up_and_out_call" and H <= S:
+            return 0
+        if self.option.option_type == "down_and_out_put" and H >= S:
+            return 0
+        if self.option.option_type == "up_and_out_put" and H <= S:
+            return 0
+
+        call = EuropeanOption(K, T, "call")
+        put = EuropeanOption(K, T, "put")
+        c = EuropeanBlackScholesPricer(call, S, sigma, r, q).price
+        p = EuropeanBlackScholesPricer(put, S, sigma, r, q).price
+
+        lambda_ = (r - q + (sigma**2)/2) / (sigma**2)
+        y = (np.log(H**2 / (S*K)) / (sigma*np.sqrt(T))) + lambda_*sigma*np.sqrt(T)
+        x1 = (np.log(S/H) / (sigma*np.sqrt(T))) + lambda_*sigma*np.sqrt(T)
+        y1 = (np.log(H/S) / (sigma*np.sqrt(T))) + lambda_*sigma*np.sqrt(T)
+        print(lambda_, y, x1, y1)
+
+        if self.option.option_type.endswith("call") and self.option.option_type.startswith("d"):
+            if H <= K:
+                cdi = (S*np.exp(-q*T) * (H/S)**(2*lambda_) * norm.cdf(y) 
+                       - K*np.exp(-r*T) * (H/S)**(2*lambda_-2) * norm.cdf(y - sigma*np.sqrt(T)))
+                cdo = c - cdi
+            else:
+                cdo = (S*norm.cdf(x1)*np.exp(-q*T) - K*np.exp(-r*T)*norm.cdf(x1 - sigma*np.sqrt(T))
+                       - S*np.exp(-q*T) * (H/S)**(2*lambda_) * norm.cdf(y1)
+                       + K*np.exp(-r*T) * (H/S)**(2*lambda_-2) * norm.cdf(y1 - sigma*np.sqrt(T)))
+                cdi = c - cdo
+        
+        if self.option.option_type == "down_and_out_call":
+            return cdo
+        elif self.option.option_type == "down_and_in_call":
+            return cdi
+        
+        if self.option.option_type.endswith("call") and self.option.option_type.startswith("u"):
+            if H <= K:
+                cuo = 0
+                cui = c
+            else:
+                cui = (S*norm.cdf(x1)*np.exp(-q*T) - K*np.exp(-r*T)*norm.cdf(x1 - sigma*np.sqrt(T))
+                       - S*np.exp(-q*T) * (H/S)**(2*lambda_) * (norm.cdf(-y) - norm.cdf(-y1))
+                       + K*np.exp(-r*T) * (H/S)**(2*lambda_-2) * (norm.cdf(-y - sigma*np.sqrt(T)) - norm.cdf(-y1 - sigma*np.sqrt(T))))
+                cuo = c - cui
+
+        if self.option.option_type == "up_and_out_call":
+            return cuo
+        elif self.option.option_type == "up_and_in_call":
+            return cui
+        
+        if self.option.option_type.endswith("put") and self.option.option_type.startswith("u"):
+            if H <= K:
+                puo = (-S*np.exp(-q*T) * norm.cdf(-x1) + K*np.exp(-r*T) * norm.cdf(-x1 + sigma*np.sqrt(T))
+                       + S*np.exp(-q*T) * (H/S)**(2*lambda_) * norm.cdf(-y1)
+                       - K*np.exp(-r*T) * (H/S)**(2*lambda_-2) * norm.cdf(-y1 + sigma*np.sqrt(T)))
+                pui = p - puo
+            else:
+                pui = (-S*np.exp(-q*T) * (H/S)**(2*lambda_) * norm.cdf(-y) 
+                       + K*np.exp(-r*T) * (H/S)**(2*lambda_-2) * norm.cdf(-y + sigma*np.sqrt(T)))
+                puo = p - pui
+        
+        if self.option.option_type == "up_and_out_put":
+            return puo
+        elif self.option.option_type == "up_and_in_put":
+            return pui
+        
+        if self.option.option_type.endswith("put") and self.option.option_type.startswith("d"):
+            if H <= K:
+                pdi = (-S*np.exp(-q*T) * norm.cdf(-x1) + K*np.exp(-r*T) * norm.cdf(-x1 + sigma*np.sqrt(T))
+                       + S*np.exp(-q*T) * (H/S)**(2*lambda_) * (norm.cdf(y) - norm.cdf(y1))
+                       - K*np.exp(-r*T) * (H/S)**(2*lambda_-2) * (norm.cdf(y - sigma*np.sqrt(T)) + norm.cdf(y1 - sigma*np.sqrt(T))))
+                pdo = p - pdi
+            else:
+                pdo = 0
+                pdi = p
+        
+        if self.option.option_type == "down_and_out_put":
+            return pdo
+        elif self.option.option_type == "down_and_in_put":
+            return pdi
 
 def main():
     pass
