@@ -53,17 +53,31 @@ class MarketData:
             self.calls.update({ticker: calls})
             self.puts.update({ticker: puts})
 
+    @staticmethod
+    def parse_file_name(file_name, delimiter="_"):
+        ticker, type, *date = file_name.split(delimiter)
+        return ticker, type, date
+
     def save_data(self):
-        base_dir = os.path.dirname(__file__)
+        base_dir = os.path.join(os.path.dirname(__file__), "..")
+        data_dir = os.path.join(base_dir, "data")
         try:
             os.mkdir("data")
         except FileExistsError:
             pass
-        if self.save_stock_data:
-            for ticker in self.tickers:
-                file_name = f"{ticker}_stock_{datetime.date.today()}.csv"
-                file_path = os.path.join(base_dir, "data", file_name)
-                self.stocks[ticker].to_csv(file_path)
+        if not self.save_stock_data:
+            return
+        
+        for ticker in self.tickers:
+            for entry in os.scandir(data_dir):
+                if not entry.is_file():
+                    continue
+                file_ticker, type, *_ = self.parse_file_name(entry.name)
+                if file_ticker == ticker and type == "stock" :
+                    os.remove(entry.path)
+            file_name = f"{ticker}_stock_{datetime.date.today()}.csv"
+            file_path = os.path.join(data_dir, file_name)
+            self.stocks[ticker].to_csv(file_path)
             
         if self.save_option_data:
             for ticker in self.tickers:
@@ -75,13 +89,8 @@ class MarketData:
                 file_path = os.path.join(base_dir, "data", file_name)
                 self.puts[ticker].to_csv(file_path)
 
-    @staticmethod
-    def parse_file_name(file_name, delimiter="_"):
-        ticker, type, *date = file_name.split("_")
-        return ticker, type, date
-
     def load_data(self, file_names=None):
-        base_dir = os.path.dirname(__file__)
+        base_dir = os.path.join(os.path.dirname(__file__), "..")
         data_dir = os.path.join(base_dir, "data")
         if not file_names:
             for entry in os.scandir(data_dir):
@@ -139,7 +148,9 @@ def get_risk_free_rates(start=None, durations=None):
 
                    
 def main():
-    pass
+    tickers = ["AAPL", "AMZN", "GOOG", "MSFT", "NVDA",
+               "PLTR", "SPY", "TQQQ", "TSLA", "TSM"]
+    MarketData(tickers, save_option_data=True, save_stock_data=True)
 
 if __name__ == "__main__":
     main()
