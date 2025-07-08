@@ -10,4 +10,4 @@ authors = [{name = "Cameron Ramsey", email = "cameronramsey04@gmail.com"}]
 dependencies = []
 
 [tool.setuptools.packages.find]
-include = ["core", "models", "derivatives"]
+include = ["core", "models", "derivatives", "marketdata", "risk"]
