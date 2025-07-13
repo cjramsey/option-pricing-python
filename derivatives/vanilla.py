@@ -19,6 +19,9 @@ class EuropeanOption(Option):
 
         args:
             spot (float): spot price.
+
+        returns:
+            float: Option payoff.
         '''
 
         if self.option_type == "call":
@@ -45,6 +48,9 @@ class AmericanOption(Option):
 
         args:
             spot (float): spot price.
+
+        returns:
+            float: Option payoff.
         '''
         
         if self.option_type == "call":
