@@ -11,8 +11,20 @@ from derivatives import exotics
 # Closed-form solutions for European options
 
 class BlackScholesPricer(Pricer, ABC):
+    '''Abstract base class for Black-Scholes-based option pricing models.'''
 
     def __init__(self, option, spot, sigma, r, q=0):
+        '''
+        Cosntructor for BlackScholesPricer objects.
+
+        args:
+            option (Option): An instance of an option contract.
+            spot (float): Current spot price of the underlying.
+            sigma (float): Volatility of the underlying asset.
+            r (float): Risk-free interest rate.
+            q (float): Continuous dividend yield. Default is 0.
+        '''
+
         if not isinstance(option, Option):
             raise TypeError(f"Parameter option must be an Option instance, got {type(option)}.")
         if not isinstance(spot, Real) or spot < 0:
@@ -32,24 +44,45 @@ class BlackScholesPricer(Pricer, ABC):
 
     @property
     def d1(self):
+        '''Parameter used frequently in Black-Scholes formulae.'''
         d1 = (np.log(self.spot/self.option.strike) 
                    + (self.r - self.q + (self.sigma**2)/2)*self.option.expiry)/(self.sigma*np.sqrt(self.option.expiry))
         return d1
     
     @property
     def d2(self):
+        '''Parameter used frequently in Black-Scholes formulae.'''
         d2 = self.d1 - self.sigma * np.sqrt(self.option.expiry)
         return d2
     
 class EuropeanBlackScholesPricer(BlackScholesPricer):
+    '''Class for Black-Scholes pricing of European call and put options.'''
 
     def __init__(self, option, spot, sigma, r, q=0):
+        '''
+        Constructor for EuropeanBlackScholesPricer objects'
+        
+        args:
+            option (EuropeanOption): European option contract.
+            spot (float): Current spot price.
+            sigma (float): Volatility.
+            r (float): Risk-free rate.
+            q (float): Dividend yield.
+        '''
+
         if not isinstance(option, EuropeanOption):
             raise TypeError(f"Parameter option must be EuropeanOption instance, got {type(option)}.")
         super().__init__(option, spot, sigma, r, q)
 
     @property
     def price(self):
+        '''
+        Price of European option.
+        
+        returns:
+            float: price
+        '''
+
         K = self.option.strike
         T = self.option.expiry
         S = self.spot
@@ -65,6 +98,13 @@ class EuropeanBlackScholesPricer(BlackScholesPricer):
         
     @property
     def delta(self):
+        '''
+        Change in option price with respect to change in spot price.
+        
+        returns:
+            float: delta of option 
+        '''
+
         T = self.option.expiry
         q = self.q
 
@@ -76,6 +116,12 @@ class EuropeanBlackScholesPricer(BlackScholesPricer):
     
     @property
     def theta(self):
+        '''
+        Change in option price with repsect to change in time.
+
+        returns:
+            float: theta of option
+        '''
         K = self.option.strike
         T = self.option.expiry
         S = self.spot
@@ -93,6 +139,13 @@ class EuropeanBlackScholesPricer(BlackScholesPricer):
     
     @property
     def gamma(self):
+        '''
+        Change in delta with respect to change in spot price.
+        
+        returns:
+            float: gamma of option
+        '''
+        
         T = self.option.expiry
         S = self.spot
         sigma = self.sigma
@@ -103,6 +156,13 @@ class EuropeanBlackScholesPricer(BlackScholesPricer):
     
     @property
     def vega(self):
+        '''
+        Change in option price with respect to change in volatility.
+
+        returns:
+            float: vega of option
+        '''
+
         T = self.option.expiry
         S = self.spot
         q = self.q
@@ -112,6 +172,13 @@ class EuropeanBlackScholesPricer(BlackScholesPricer):
     
     @property
     def rho(self):
+        '''
+        Change in option price with respect to change in risk-free rate.
+        
+        returns:
+            float: rho of option
+        '''
+
         K = self.option.strike
         T = self.option.expiry
         r = self.r
@@ -124,6 +191,12 @@ class EuropeanBlackScholesPricer(BlackScholesPricer):
             
     @property
     def greeks(self):
+        '''
+        Dictionary of Greeks with names as key.
+
+        returns:
+            dict: dictionary of Greeks of option
+        '''
         greeks_dict = {
             "delta": self.delta,
             "theta": self.theta,
@@ -136,14 +209,33 @@ class EuropeanBlackScholesPricer(BlackScholesPricer):
 # Closed-form solutions for exotics
 
 class PerpetualAmericanPricer(BlackScholesPricer):
+    '''Class for Black-Scholes pricing of perpetual American call and put options.'''
 
     def __init__(self, option, spot, sigma, r, q=0):
+        '''
+        Constructor for PerpetualAmericanPricer objects.
+
+        args:
+            option (PerpetualAmericanOption): perpetual American option.
+            spot (float): Current spot price.
+            sigma (float): Volatility.
+            r (float): Risk-free rate.
+            q (float): Dividend yield.
+        '''
+
         if not isinstance(option, exotics.PerpetualAmericanOption):
             raise TypeError(f"Parameter option must be PerpetualAmericanOption instance, got {type(option)}.")
         super().__init__(option, spot, sigma, r, q)
 
     @property
     def price(self):
+        '''
+        Price of perpetual American option.
+        
+        returns:
+            float: price
+        '''
+
         K = self.option.strike
         S = self.spot
         sigma = self.sigma
@@ -170,14 +262,33 @@ class PerpetualAmericanPricer(BlackScholesPricer):
             return p
     
 class GapOptionPricer(BlackScholesPricer):
+    '''Class for Black-Scholes pricing of gap (European) call and put options.'''
 
     def __init__(self, option, spot, sigma, r, q=0):
+        '''
+        Constructor for GapOptionPricer objects.
+
+        args:
+            option (GapOption): Gap option contract.
+            spot (float): Current spot price.
+            sigma (float): Volatility.
+            r (float): Risk-free rate.
+            q (float): Dividend yield.
+        '''
+
         if not isinstance(option, exotics.GapOption):
             raise TypeError(f"Parameter option must be GapOption instance, got {type(option)}.")
         super().__init__(option, spot, sigma, r, q)
 
     @property
     def price(self):
+        '''
+        Price of gap option.
+        
+        returns:
+            float: price
+        '''
+
         K1 = self.option.strike1
         K2 = self.option.strike2
         T = self.option.expiry
@@ -198,14 +309,32 @@ class GapOptionPricer(BlackScholesPricer):
             return p
 
 class ForwardStartPricer(BlackScholesPricer):
+    '''Class for Black-Scholes pricing of forward start call and put options.'''
 
     def __init__(self, option, spot, sigma, r):
+        '''
+        Constructor for ForwardStartPricer objects.
+        
+        args:
+            option (ForwardStartOption): Forward-start option contract.
+            spot (float): Current spot price.
+            sigma (float): Volatility.
+            r (float): Risk-free rate.
+        '''
+
         if not isinstance(option, exotics.ForwardStartOption):
             raise TypeError(f"Parameter option must be ForwardStartOption instance, got {type(option)}.")
         super().__init__(option, spot, sigma, r, q=0)
 
     @property
     def price(self):
+        '''
+        Price of forward start option.
+        
+        returns:
+            float: price
+        '''
+
         T = self.option.T2 - self.option.T1
         euro_option = EuropeanOption(self.spot, T, self.option.option_type)
         pricer = EuropeanBlackScholesPricer(euro_option, self.spot, self.sigma, self.r, self.q)
@@ -215,6 +344,8 @@ class ForwardStartPricer(BlackScholesPricer):
 
 class BasicCliquetPricer(BlackScholesPricer):
     '''
+    Class for Black-Scholes pricing of basic cliquet options.
+
     We assume the term structure is simple with fixed reset times,
     specified type of option between each period, and the strike 
     price of next option resets to the current spot price at the 
@@ -226,12 +357,30 @@ class BasicCliquetPricer(BlackScholesPricer):
     '''
 
     def __init__(self, option, spot, sigma, r, q=0):
+        '''
+        Constructor for BasicCliquetPricer objects.
+
+        args:
+            option (BasicCliquetOption): Cliquet-style exotic option.
+            spot (float): Initial spot price.
+            sigma (float): Volatility.
+            r (float): Risk-free rate.
+            q (float): Dividend yield.
+        '''
+
         if not isinstance(option, exotics.BasicCliquetOption):
             raise TypeError(f"Parameter option must be a BasicCliquetOption instance, got {type(option)}.")
         super().__init__(option, spot, sigma, r, q)
 
     @property
     def price(self):
+        '''
+        Price of forward start option.
+        
+        returns:
+            float: price
+        '''
+
         K = self.option.strike
         S = self.spot
         sigma = self.sigma
@@ -249,14 +398,33 @@ class BasicCliquetPricer(BlackScholesPricer):
         return c
     
 class ChooserOptionPricer(BlackScholesPricer):
+    '''Class for Black-Scholes pricing of chooser options.'''
 
     def __init__(self, option, spot, sigma, r, q=0):
+        '''
+        Constructor for ChooserOptionPricer objects.
+
+        args:
+            option (ChooserOption): Chooser option contract.
+            spot (float): Current spot price.
+            sigma (float): Volatility.
+            r (float): Risk-free rate.
+            q (float): Dividend yield.
+        '''
+
         if not isinstance(option, exotics.ChooserOption):
             raise TypeError(f"Parameter option must be a ChooserOption instance, got {type(option)}.")
         super().__init__(option, spot, sigma, r, q)
 
     @property
     def price(self):
+        '''
+        Price of forward start option.
+        
+        returns:
+            float: price
+        '''
+
         K = self.option.strike
         T1, T2 = self.option.T1, self.option.T2
         S = self.spot
@@ -271,14 +439,33 @@ class ChooserOptionPricer(BlackScholesPricer):
         return c + np.exp(-q*(T2-T1))*p
     
 class BarrierOptionsPricer(BlackScholesPricer):
+    '''Class for Black-Scholes pricing of barrier options.'''
 
     def __init__(self, option, spot, sigma, r, q=0):
+        '''
+        Constructor for BarrierOptionPricer objects.
+        
+        args:
+            option (BarrierOption): Barrier option contract.
+            spot (float): Spot price of the underlying.
+            sigma (float): Volatility.
+            r (float): Risk-free rate.
+            q (float): Dividend yield.
+        '''
+
         if not isinstance(option, exotics.BarrierOption):
             raise TypeError(f"Parameter option must be a BarrierOption instance, got {type(option)}.")
         super().__init__(option, spot, sigma, r, q)
 
     @property
     def price(self):
+        '''
+        Price of forward start option.
+        
+        returns:
+            float: price
+        '''
+        
         K = self.option.strike
         T = self.option.expiry
         H = self.option.barrier

@@ -27,7 +27,7 @@ class PerpetualAmericanOption(Option):
             spot (float): spot price.
 
         returns:
-            float: Option payoff.
+            float: option payoff.
         '''
         
         if self.option_type == "call":
@@ -74,7 +74,7 @@ class GapOption(Option):
             spot (float): spot price.
 
         returns:
-            float: Option payoff.
+            float: option payoff.
         '''
 
         if self.option_type == "call":
@@ -129,8 +129,8 @@ class BasicCliquetOption(Option):
         
         args:
             strike (float): strike price.
-            expirations (list): sequence of expiration dates for options which make up the cliquet.
-            option_type (list): seqeunce of types, either "call" or "put", for options which make up the cliquet.
+            expirations (list[float]): sequence of expiration dates for options which make up the cliquet.
+            option_type (list[str]): seqeunce of types, either "call" or "put", for options which make up the cliquet.
         '''
 
         if not isinstance(strike, Real) or strike < 0:
@@ -152,10 +152,10 @@ class BasicCliquetOption(Option):
         Calculates payoff of option for specified spot prices.
         
         args:
-            spot (list): spot prices at expiration dates.
+            spot (list[float]): spot prices at expiration dates.
 
         returns:
-            float: Option payoff.
+            float: option payoff.
         '''
 
         c = 0
@@ -198,10 +198,10 @@ class AsianOption(Option):
         Calculates payoff of option for specified path.
         
         args:
-            path (list): path of spot prices from beginning of options life to expiry.
+            path (list[float]): path of spot prices from beginning of options life to expiry.
 
         returns:
-            float: Option payoff.
+            float: option payoff.
         '''
 
         if self.avg_type == "arithmetic":
@@ -250,7 +250,7 @@ class ChooserOption(Option):
             choice (str): choice of either "call" or "put" made at time T1.
 
         returns:
-            float: Option payoff.       
+            float: option payoff.       
         '''
 
         if choice == "call":
@@ -295,7 +295,7 @@ class BarrierOption(Option):
             path (list): path of spot prices from beginning of options life to expiry.
 
         returns:
-            float: Option payoff.       
+            float: option payoff.       
         '''
 
         if self.option_type == "down_and_out_call":
