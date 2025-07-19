@@ -84,7 +84,7 @@ if tab == "Single Option":
             col.metric(f"{greek.capitalize()}", rounded_value)
 
     with tabs[1]:
-        n = st.slider("Number of time steps", 1, 500, 10)
+        n = st.slider("Number of time steps", 3, 500, 10)
         pricer = EuropeanBinomialTreePricer(option, S, sigma, r, q=0, steps=n)
         price = round(pricer.price, 4)
         a = st.columns(3)
