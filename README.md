@@ -5,3 +5,5 @@ A modular and extensible Python library for pricing vanilla and exotic options u
 An interactive app is available to demonstrate uses of the package using the `streamlit` library.
 
 [![Streamlit App](https://img.shields.io/badge/Live-Demo-green)](https://cjramsey-option-pricing-python.streamlit.app/)
+
+![App Screenshot](images/screenshot.png)
