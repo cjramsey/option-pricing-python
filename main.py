@@ -15,8 +15,8 @@ if tab == "Heatmap":
 
     with st.sidebar:
         S = st.slider("Spot price", 75, 125, 100)
-        r = st.slider("Risk-free rate", 0.001, 0.1, 0.05)
-        sigma = st.slider("Volatility", 0.001, float(1), 0.4)
+        r = st.slider("Risk-free rate", 0.001, 0.1, 0.05, format="%0.3f")
+        sigma = st.slider("Volatility", 0.01, float(1), 0.4, format="%0.2f")
 
         option_type = st.selectbox("Option Type", ("Call", "Put"))
         option_map = {"Call": "call", "Put": "put"}
@@ -59,8 +59,8 @@ if tab == "Single Option":
     with st.sidebar:
 
         S = st.slider("Spot price", 75, 125, 100)
-        r = st.slider("Risk-free rate", 0.001, 0.1, 0.05)
-        sigma = st.slider("Volatility", 0.001, float(1), 0.4)
+        r = st.slider("Risk-free rate", 0.01, 0.1, 0.05, format="%0.2f")
+        sigma = st.slider("Volatility", 0.01, float(1), 0.4, format="%0.2f")
         strike = st.slider("Strike price", 75, 125, 100)
         expiry = st.slider("Time to expiration", 0.1, float(2), float(1))
 
