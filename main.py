@@ -15,8 +15,8 @@ if tab == "Heatmap":
 
     with st.sidebar:
         S = st.slider("Spot price", 75, 125, 100)
-        r = st.slider("Risk-free rate", float(0), 0.1, 0.05)
-        sigma = st.slider("Volatility", float(0), float(1), 0.4)
+        r = st.slider("Risk-free rate", 0.001, 0.1, 0.05)
+        sigma = st.slider("Volatility", 0.001, float(1), 0.4)
 
         option_type = st.selectbox("Option Type", ("Call", "Put"))
         option_map = {"Call": "call", "Put": "put"}
@@ -59,8 +59,8 @@ if tab == "Single Option":
     with st.sidebar:
 
         S = st.slider("Spot price", 75, 125, 100)
-        r = st.slider("Risk-free rate", float(0), 0.1, 0.05)
-        sigma = st.slider("Volatility", float(0), float(1), 0.4)
+        r = st.slider("Risk-free rate", 0.001, 0.1, 0.05)
+        sigma = st.slider("Volatility", 0.001, float(1), 0.4)
         strike = st.slider("Strike price", 75, 125, 100)
         expiry = st.slider("Time to expiration", 0.1, float(2), float(1))
 
@@ -98,7 +98,7 @@ if tab == "Single Option":
         
     with tabs[2]:
         N = st.slider("Number of paths", 1, 1000000, 10000)
-        n = st.slider("Number of time steps", 1, 1000, 250)
+        n = st.slider("Number of time steps", 2, 1000, 250)
 
         pricer = TerminalMonteCarloPricer(option, GeometricBrownianMotion(S, r, sigma, expiry, N, n), r, N, n)
         price = round(pricer.price, 4)
