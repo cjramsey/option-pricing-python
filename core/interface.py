@@ -186,9 +186,9 @@ class PathGenerator(ABC):
             no_of_steps (int): number of time steps in a single path.
         '''
 
-        if not isinstance(no_of_paths, np.integer) or no_of_paths < 1:
+        if not isinstance(no_of_paths, int) or no_of_paths < 1:
             raise TypeError(f"Parameter no_of_paths must be an integer >= 1, got {no_of_paths} ({type(no_of_paths)}).")
-        if not isinstance(no_of_steps, np.integer) or no_of_steps < 1:
+        if not isinstance(no_of_steps, int) or no_of_steps < 1:
             raise TypeError(f"Parameter no_of_steps must be an integer >=1, got {no_of_steps} ({type(no_of_steps)}).")
 
         self.no_of_paths = no_of_paths
