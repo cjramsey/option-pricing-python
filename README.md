@@ -6,4 +6,4 @@ An interactive app is available to demonstrate uses of the package using the `st
 
 [![Streamlit App](https://img.shields.io/badge/Live-Demo-green)](https://cjramsey-option-pricing-python.streamlit.app/)
 
-![App Screenshot](images/screenshot.png)
+[![App Screenshot](images/screenshot.png)](https://cjramsey-option-pricing-python.streamlit.app/)
