@@ -97,8 +97,8 @@ if tab == "Single Option":
             col.metric(f"{greek.capitalize()}", rounded_value)
         
     with tabs[2]:
-        N = st.slider("Number of paths", 1, 1000000, 10000)
-        n = st.slider("Number of time steps", 2, 1000, 250)
+        N = st.slider("Number of paths", 1, 250000, 10000)
+        n = st.slider("Number of time steps", 2, 500, 250)
 
         pricer = TerminalMonteCarloPricer(option, GeometricBrownianMotion(S, r, sigma, expiry, N, n), r, N, n)
         price = round(pricer.price, 4)
