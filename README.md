@@ -16,7 +16,7 @@ Note: If the Streamlit app is asleep when you open it, just click *"Wake up"* an
 
 ```bash
 git clone https://github.com/cjramsey/option-pricing-python.git
-cd option-pricing-python.git
+cd option-pricing-python
 ```
 
 ### 2. Install the Package (Editable Mode)
