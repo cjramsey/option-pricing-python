@@ -98,7 +98,7 @@ if tab == "Single Option":
         
     with tabs[2]:
         N = st.slider("Number of paths", 1, 250000, 10000)
-        n = st.slider("Number of time steps", 2, 500, 250)
+        n = st.slider("Number of time steps", 2, 250, 250)
 
         pricer = TerminalMonteCarloPricer(option, GeometricBrownianMotion(S, r, sigma, expiry, N, n), r, N, n)
         price = round(pricer.price, 4)

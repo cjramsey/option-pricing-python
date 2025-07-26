@@ -17,11 +17,11 @@ class GeometricBrownianMotion(PathGenerator):
         self.paths = self.generate_paths()
 
     def generate_paths(self):
-        dt = self.T/self.no_of_steps
-        dz = np.random.standard_normal(size=(self.no_of_paths, self.no_of_steps+1))
+        dt = np.float32(self.T/self.no_of_steps)
+        dz = np.random.standard_normal(size=(self.no_of_paths, self.no_of_steps+1)).astype(np.float32)
         dz[:,0] = 0
-        dW = np.cumsum(dz*np.sqrt(dt), axis=1)
-        t = np.linspace(0, self.T, self.no_of_steps+1)
+        dW = np.cumsum(dz*np.sqrt(dt), axis=1).astype(np.float32)
+        t = np.linspace(0, self.T, self.no_of_steps+1).astype(np.float32)
         paths = self.spot*np.exp((self.drift_rate - (self.volatility**2)/2)*t +self.volatility*dW)
         return paths
     
