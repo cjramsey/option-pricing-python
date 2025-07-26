@@ -63,7 +63,7 @@ class BinomialTreePricer(Pricer, ABC):
         d = 1/u
         f = self.trees[1]
         h = 0.5*(S*u**2 - S*d**2)
-        gamma = ((f[2,2] - f[1,2])/(S*u**2 - S) - (f[1,2] - f[0,2])/(S - S*d**2))/h
+        gamma = ((f[0,2] - f[1,2])/(S*u**2 - S) - (f[1,2] - f[2,2])/(S - S*d**2))/h
         return gamma
     
     @property
@@ -173,21 +173,18 @@ class EuropeanBinomialTreePricer(BinomialTreePricer):
     
     @property
     def vega(self):
-        dt = self.option.expiry/self.steps
-        u = np.exp(self.sigma*np.sqrt(dt))
-        d = 1/u
-        f = self.trees[1]
-        delta_sigma = 0.001
-        f_prime = EuropeanBinomialTreePricer(self.option, self.spot, self.sigma + delta_sigma, self.r, self.steps).get_trees()[1]
-        vega = (f_prime[0,0] - f[0,0])/delta_sigma
+        delta_sigma = 0.01
+        f_up = EuropeanBinomialTreePricer(self.option, self.spot, self.sigma + delta_sigma, self.r, self.steps).get_trees()[1]
+        f_down = EuropeanBinomialTreePricer(self.option, self.spot, self.sigma - delta_sigma, self.r, self.steps).get_trees()[1]
+        vega = (f_up[0,0] - f_down[0,0])/(2 * delta_sigma)
         return vega
     
     @property
     def rho(self):
-        f = self.trees[1]
-        delta_r = 0.001
-        f_prime = EuropeanBinomialTreePricer(self.option, self.spot, self.sigma, self.r + delta_r, self.steps).get_trees()[1]
-        rho = (f_prime[0,0] - f[0,0])/delta_r
+        delta_r = 0.0001
+        f_up = EuropeanBinomialTreePricer(self.option, self.spot, self.sigma, self.r + delta_r, self.steps).get_trees()[1]
+        f_down = EuropeanBinomialTreePricer(self.option, self.spot, self.sigma, self.r - delta_r, self.steps).get_trees()[1]
+        rho = (f_up[0,0] - f_down[0,0])/(2 * delta_r)
         return rho
 
 
@@ -236,21 +233,18 @@ class AmericanBinomialTreePricer(BinomialTreePricer):
     
     @property
     def vega(self):
-        dt = self.option.expiry/self.steps
-        u = np.exp(self.sigma*np.sqrt(dt))
-        d = 1/u
-        f = self.trees[1]
-        delta_sigma = 0.001
-        f_prime = AmericanBinomialTreePricer(self.option, self.spot, self.sigma + delta_sigma, self.r, self.steps).get_trees()[1]
-        vega = (f_prime[0,0] - f[0,0])/delta_sigma
+        delta_sigma = 0.01
+        f_up = AmericanBinomialTreePricer(self.option, self.spot, self.sigma + delta_sigma, self.r, self.steps).get_trees()[1]
+        f_down = AmericanBinomialTreePricer(self.option, self.spot, self.sigma - delta_sigma, self.r, self.steps).get_trees()[1]
+        vega = (f_up[0,0] - f_down[0,0])/(2 * delta_sigma)
         return vega
     
     @property
     def rho(self):
-        f = self.trees[1]
-        delta_r = 0.001
-        f_prime = AmericanBinomialTreePricer(self.option, self.spot, self.sigma, self.r + delta_r, self.steps).get_trees()[1]
-        rho = (f_prime[0,0] - f[0,0])/delta_r
+        delta_r = 0.0001
+        f_up = AmericanBinomialTreePricer(self.option, self.spot, self.sigma, self.r + delta_r, self.steps).get_trees()[1]
+        f_down = AmericanBinomialTreePricer(self.option, self.spot, self.sigma, self.r - delta_r, self.steps).get_trees()[1]
+        rho = (f_up[0,0] - f_down[0,0])/(2 * delta_r)
         return rho
     
     def control_variate_technique(self):
@@ -263,7 +257,9 @@ class AmericanBinomialTreePricer(BinomialTreePricer):
 
 
 def main():
-    pass
+    option = EuropeanOption(100, 1, "call")
+    pricer = EuropeanBinomialTreePricer(option, 100, 0.4, 0.05, steps=500)
+    print(pricer.greeks)
 
 if __name__ == "__main__":
     main()
