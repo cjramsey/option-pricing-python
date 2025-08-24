@@ -34,3 +34,12 @@ Make sure you have `pip >= 21.0`, which supports PEP517/518 builds from `pyproje
 ```bash
 pip install -r requirements.txt
 ```
+
+# References
+
+- John C. Hull, *Options, Futures and Other Derivatives (11 Edition)* 2022
+- Steven E. Schreve, *Stochastic Calculus for Finance I*, 2004
+
+# License
+
+This project is licensed under the MIT License - see the [LICENSE.txt](LICENSE.txt) file for details.
